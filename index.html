@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة الرياضيات التفاعلية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f8fafc;
+        }
+        .gradient-bg-header {
+            background: #ffffff;
+        }
+        .gradient-bg-button {
+            background: linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%);
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.2);
+        }
+        .lesson-list {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .unit-card.open .lesson-list {
+            max-height: 500px;
+        }
+        .unit-card.open .chevron {
+            transform: rotate(180deg);
+        }
+        .input-focus:focus {
+            box-shadow: 0 0 0 2px #bfdbfe;
+        }
+        /* Spinner for loading states */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div id="app" class="min-h-screen">
+
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="flex items-center justify-center min-h-screen bg-slate-100">
+            <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-2xl shadow-xl text-center">
+                <div class="w-24 h-24 mx-auto bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M8 7H16C18.7614 7 21 9.23858 21 12C21 14.7614 18.7614 17 16 17H8V7Z" fill="white"/>
+                        <path d="M8 7V3" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div id="login-form">
+                    <h1 class="text-3xl font-bold text-slate-800">أهلاً بك مجدداً</h1>
+                    <p class="text-slate-600">سجل دخولك لمتابعة رحلتك التعليمية</p>
+                    <div class="space-y-4 mt-6">
+                        <input id="login-email" type="email" placeholder="البريد الإلكتروني" class="w-full px-4 py-3 text-right bg-slate-100 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 input-focus transition">
+                        <input id="login-password" type="password" placeholder="كلمة المرور" class="w-full px-4 py-3 text-right bg-slate-100 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 input-focus transition">
+                    </div>
+                    <button id="login-btn" onclick="login()" class="w-full mt-6 px-4 py-3 font-semibold text-white gradient-bg-button rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105">تسجيل الدخول</button>
+                    <p id="auth-error" class="text-red-500 text-sm mt-2 h-4"></p>
+                    <p class="mt-4 text-sm text-slate-600">ليس لديك حساب؟ <a href="#" onclick="showSignupForm()" class="font-semibold text-blue-600 hover:underline">أنشئ حساباً جديداً</a></p>
+                </div>
+                <div id="signup-form" class="hidden">
+                    <h1 class="text-3xl font-bold text-slate-800">إنشاء حساب جديد</h1>
+                    <p class="text-slate-600">خطوة واحدة تفصلك عن عالم الرياضيات الممتع</p>
+                    <div class="space-y-4 mt-6 text-right">
+                        <input id="signup-name" type="text" placeholder="الاسم الكامل" class="w-full px-4 py-3 bg-slate-100 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 input-focus transition">
+                        <input id="signup-email" type="email" placeholder="البريد الإلكتروني" class="w-full px-4 py-3 bg-slate-100 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 input-focus transition">
+                        <input id="signup-password" type="password" placeholder="كلمة المرور" class="w-full px-4 py-3 bg-slate-100 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 input-focus transition">
+                        <div>
+                            <label class="font-semibold text-slate-700">تسجيل كـ:</label>
+                            <div class="flex justify-center gap-4 mt-2">
+                                <label for="role-student" class="flex items-center p-3 border-2 rounded-lg cursor-pointer w-full justify-center has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500"><input type="radio" id="role-student" name="role" value="student" class="ml-2" checked> طالب</label>
+                                <label for="role-teacher" class="flex items-center p-3 border-2 rounded-lg cursor-pointer w-full justify-center has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500"><input type="radio" id="role-teacher" name="role" value="teacher" class="ml-2"> معلم</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="signup-btn" onclick="signup()" class="w-full mt-6 px-4 py-3 font-semibold text-white gradient-bg-button rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105">إنشاء الحساب</button>
+                    <p class="mt-4 text-sm text-slate-600">لديك حساب بالفعل؟ <a href="#" onclick="showLoginForm()" class="font-semibold text-blue-600 hover:underline">سجل دخولك</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content" class="hidden">
+            <header class="gradient-bg-header text-slate-800 shadow-md sticky top-0 z-10">
+                <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                         <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 7H16C18.7614 7 21 9.23858 21 12C21 14.7614 18.7614 17 16 17H8V7Z" fill="white"/><path d="M8 7V3" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+                        </div>
+                        <h1 class="text-xl font-bold">منصة الرياضيات</h1>
+                    </div>
+                    <div class="flex items-center space-x-4 space-x-reverse">
+                        <span id="user-name" class="font-semibold hidden sm:block"></span>
+                        <button onclick="logout()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition font-semibold">تسجيل الخروج</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="container mx-auto p-6">
+                <div id="loading-screen" class="flex justify-center items-center p-16 hidden"><div class="loader"></div></div>
+                <div id="diagnostic-screen" class="hidden text-center">
+                    <div class="bg-white p-8 rounded-2xl shadow-lg max-w-2xl mx-auto">
+                        <h2 class="text-3xl font-bold text-slate-800">أهلاً بك في منصة الرياضيات!</h2>
+                        <p class="text-slate-600 mt-4 mb-6">قبل أن تبدأ رحلتك في منهج الصف الثالث، هيا نختبر مهاراتك الأساسية من الصف الثاني. هذا سيساعدنا على فهم مستواك بشكل أفضل.</p>
+                        <button onclick="startQuiz('diagnostic')" class="px-8 py-4 font-bold text-white gradient-bg-button rounded-lg shadow-md hover:opacity-90 transition-transform transform hover:scale-105 text-lg">ابدأ الاختبار التشخيصي</button>
+                    </div>
+                </div>
+                <div id="student-dashboard" class="hidden">
+                    <h2 class="text-3xl font-bold text-slate-800 mb-6">مرحباً بك مجدداً، <span id="student-name"></span>!</h2>
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="md:col-span-2 space-y-4" id="units-container"></div>
+                        <div class="bg-white p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-xl font-bold text-slate-800 mb-4">مستوى تقدمك في الاختبارات</h3>
+                            <canvas id="studentProgressChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div id="teacher-dashboard" class="hidden">
+                     <h2 class="text-3xl font-bold text-slate-800 mb-6">لوحة تحكم المعلم</h2>
+                     <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">أداء الطلاب</h3>
+                        <div id="students-list" class="space-y-4"></div>
+                     </div>
+                </div>
+                <div id="student-detail-view" class="hidden mt-6">
+                    <button onclick="showTeacherDashboard()" class="mb-4 px-4 py-2 bg-slate-200 text-slate-700 font-semibold rounded-lg hover:bg-slate-300 transition"> &rarr; العودة إلى قائمة الطلاب</button>
+                    <div class="bg-white p-6 rounded-2xl shadow-lg">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-4">تقرير أداء الطالب: <span id="detail-student-name"></span></h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div><h4 class="font-bold mb-2 text-slate-700">التقدم العام في الاختبارات</h4><canvas id="teacherStudentChart"></canvas></div>
+                            <div id="strengths-weaknesses">
+                                <h4 class="font-bold mb-2 text-slate-700">نقاط القوة والضعف</h4>
+                                <div class="space-y-2">
+                                    <p class="font-semibold text-green-600">نقاط القوة:</p><ul id="student-strengths" class="list-disc list-inside text-green-700"></ul>
+                                    <p class="font-semibold text-red-600 mt-4">نقاط تحتاج لتحسين:</p><ul id="student-weaknesses" class="list-disc list-inside text-red-700"></ul>
+                                </div>
+                                <button id="support-plan-btn" onclick="getSupportPlan()" class="mt-6 w-full px-4 py-3 font-semibold text-white gradient-bg-button rounded-lg shadow-md hover:opacity-90 flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3V1.5M12 22.5V21M3 12H1.5M22.5 12H21M6.343 6.343l-1.06-1.06M18.718 18.718l-1.06-1.06M6.343 17.657l-1.06 1.06M18.718 5.282l-1.06 1.06M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/></svg>
+                                    اقتراح خطة دعم
+                                </button>
+                                <div id="support-plan-container" class="mt-4 p-4 bg-slate-50 rounded-lg hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Modals -->
+        <div id="game-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-20">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 transform transition-all">
+                <h2 id="game-title" class="text-2xl font-bold text-center mb-4 text-slate-800"></h2>
+                <p id="game-instruction" class="text-center text-slate-600 mb-6"></p>
+                <div id="game-area" class="space-y-4"></div>
+                <p id="game-feedback" class="text-center font-bold mt-4 h-6"></p>
+                <div class="mt-8 flex justify-center">
+                    <button onclick="closeModal('game-modal')" class="px-8 py-3 font-semibold text-white gradient-bg-button rounded-lg shadow-md hover:opacity-90">إغلاق</button>
+                </div>
+            </div>
+        </div>
+        <div id="quiz-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-20">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 transform transition-all" id="quiz-content"><h2 id="quiz-title" class="text-2xl font-bold text-center mb-6 text-slate-800"></h2><div id="quiz-questions" class="space-y-6"></div><div class="mt-8 flex justify-between"><button onclick="submitQuiz()" class="px-8 py-3 font-semibold text-white gradient-bg-button rounded-lg shadow-md hover:opacity-90">إرسال الإجابات</button><button onclick="closeModal('quiz-modal')" class="px-6 py-3 font-semibold bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300">إغلاق</button></div></div>
+        </div>
+        <div id="feedback-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-20">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 transform transition-all"><h2 class="text-3xl font-bold text-center mb-2 text-slate-800">نتيجتك</h2><p id="feedback-score" class="text-2xl font-semibold text-center text-blue-600 mb-6"></p><div id="feedback-details" class="space-y-4 max-h-96 overflow-y-auto pr-2"></div><div class="mt-8 text-center"><button onclick="closeModal('feedback-modal')" class="px-8 py-3 font-semibold text-white gradient-bg-button rounded-lg shadow-md hover:opacity-90">حسناً</button></div></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            updateDoc,
+            collection,
+            query,
+            where,
+            onSnapshot
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // --- MOCK DATA ---
+        const courseData = {
+            diagnosticTest: {
+                id: 'diagnostic',
+                title: 'الاختبار التشخيصي لمهارات الصف الثاني',
+                quiz: [
+                    { q: 'ما هو ناتج جمع ١٥ + ٤؟', a: ['١٨', '٢٠', '١٩'], correct: 2 },
+                    { q: 'ما هو ناتج طرح ٢٠ - ٨؟', a: ['١٢', '١٠', '١٤'], correct: 0 },
+                    { q: 'ما هي القيمة المنزلية للرقم ٥ في العدد ٥٧؟', a: ['٥', '٥٠', '٥٠٠'], correct: 1 },
+                    { q: 'أي عدد أكبر: ٨٩ أم ٩٨؟', a: ['٨٩', '٩٨', 'متساويان'], correct: 1 },
+                    { q: 'أكمل النمط: ١٠، ٢٠، ٣٠، ...؟', a: ['٣٥', '٤٠', '٥٠'], correct: 1 }
+                ]
+            },
+            units: [ { id: 'u1', title: 'الفصل الأول: القيمة المنزلية', description: 'فهم الأعداد حتى عشرات الألوف وتقريبها.', lessons: [ { id: 'l1-1', title: 'الأنماط العددية', game: { type: 'multipleChoice', instruction: 'أكمل النمط التالي: ٢، ٤، ٦، ...', items: [{ q: '٢، ٤، ٦، ...', a: ['٧', '٨', '١٠'], correct: 1 }]}}, { id: 'l1-2', title: 'القيمة المنزلية ضمن الألوف', game: { type: 'multipleChoice', instruction: 'ما القيمة المنزلية للرقم الملون بالأحمر؟', items: [{ q: '٤<span class="text-red-500">٢</span>٨', a: ['٢', '٢٠', '٢٠٠'], correct: 1 }]}}, { id: 'l1-3', title: 'القيمة المنزلية ضمن عشرات الألوف', game: { type: 'multipleChoice', instruction: 'ما القيمة المنزلية للرقم الملون بالأحمر؟', items: [{ q: '١<span class="text-red-500">٥</span>٦٠٠', a: ['٥٠', '٥٠٠', '٥٠٠٠'], correct: 2 }]}}, { id: 'l1-4', title: 'مقارنة الأعداد', game: { type: 'multipleChoice', instruction: 'اختر الرمز الصحيح للمقارنة.', items: [ { q: '٤٥٦ ___ ٤٦٥', a: ['>', '<', '='], correct: 1 }, { q: '٩٨٠ ___ ٩٠٨', a: ['>', '<', '='], correct: 0 } ]}}, { id: 'l1-5', title: 'ترتيب الأعداد', game: { type: 'multipleChoice', instruction: 'رتب الأعداد من الأصغر إلى الأكبر.', items: [{ q: '١٥٠، ١٠٥، ٥١٠', a: ['١٠٥، ١٥٠، ٥١٠', '٥١٠، ١٥٠، ١٠٥', '١٠٥، ٥١٠، ١٥٠'], correct: 0 }]}}, { id: 'l1-6', title: 'التقريب إلى أقرب عشرة ومئة', game: { type: 'multipleChoice', instruction: 'قرّب العدد إلى أقرب مئة.', items: [{ q: '٣٧٨', a: ['٣٠٠', '٣٥٠', '٤٠٠'], correct: 2 }]}}, { id: 'l1-7', title: 'التقريب إلى أقرب ألف', game: { type: 'multipleChoice', instruction: 'قرّب العدد إلى أقرب ألف.', items: [{ q: '٦٨٠٠', a: ['٦٠٠٠', '٧٠٠٠', '٦٥٠٠'], correct: 1 }]}} ], quiz: [{ q: 'ما هي القيمة المنزلية للرقم ٧ في العدد ٧٢٩؟', a: ['٧', '٧٠', '٧٠٠'], correct: 2 }, { q: 'قرّب العدد ٤٨ إلى أقرب عشرة.', a: ['٤٠', '٥٠', '٤٥'], correct: 1 }, { q: 'أي الأعداد التالية هو الأكبر؟', a: ['٥٠٥٠', '٥٥٠٠', '٥٠٠٥'], correct: 1 }] }, { id: 'u2', title: 'الفصل الثاني: الجمع', description: 'تعلم خصائص الجمع وتقدير نواتجه.', lessons: [ { id: 'l2-1', title: 'خصائص الجمع', game: { type: 'multipleChoice', instruction: 'اختر الجملة التي تطابق الخاصية.', items: [ { q: 'خاصية الإبدال لـ ٧ + ٢ = ٩', a: ['٢ + ٧ = ٩', '٧ + ٠ = ٧', '(٧+١)+١ = ٩'], correct: 0 } ]}}, { id: 'l2-2', title: 'تقدير نواتج الجمع', game: { type: 'multipleChoice', instruction: 'قدّر ناتج الجمع بالتقريب لأقرب عشرة.', items: [{ q: '٢٨ + ٤١', a: ['٦٠', '٧٠', '٨٠'], correct: 1 }]}}, { id: 'l2-3', title: 'جمع الأعداد المكونة من رقمين', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الجمع.', items: [ { q: '٣٤ + ١٥ = ؟', a: ['٤٨', '٥٩', '٤٩'], correct: 2 } ]}}, { id: 'l2-4', title: 'جمع الأعداد المكونة من 3 أرقام', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الجمع.', items: [{ q: '١٥٠ + ٢٥٠ = ؟', a: ['٣٠٠', '٤٠٠', '٣٥٠'], correct: 1 }]}} ], quiz: [{ q: 'ما هو ناتج جمع ٢٥ + ١٠؟', a: ['٣٠', '٣٥', '٤٠'], correct: 1 }, { q: 'استخدم خاصية الإبدال: ٥ + ٩ = ؟', a: ['٩ + ٥', '٩ × ٥', '٩ - ٥'], correct: 0 }, { q: 'قدّر ناتج جمع ٥٥ + ٣٢ لأقرب عشرة', a: ['٨٠', '٩٠', '١٠٠'], correct: 1 }] }, { id: 'u3', title: 'الفصل الثالث: الطرح', description: 'تعلم طرح الأعداد المكونة من رقمين وثلاثة أرقام.', lessons: [ { id: 'l3-1', title: 'طرح الأعداد المكونة من رقمين', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الطرح.', items: [ { q: '٨٨ - ١٤ = ؟', a: ['٧٤', '٦٤', '٧٢'], correct: 0 } ]}}, { id: 'l3-2', title: 'تقدير نواتج الطرح', game: { type: 'multipleChoice', instruction: 'قدّر ناتج الطرح بالتقريب لأقرب مئة.', items: [{ q: '٤٨٠ - ١٩٠', a: ['٣٠٠', '٢٠٠', '٤٠٠'], correct: 0 }]}}, { id: 'l3-3', title: 'طرح الأعداد المكونة من 3 أرقام', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الطرح.', items: [{ q: '٥٠٠ - ١٥٠ = ؟', a: ['٣٥٠', '٤٥٠', '٤٠٠'], correct: 0 }]}}, { id: 'l3-4', title: 'الطرح مع وجود الأصفار', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الطرح.', items: [{ q: '٤٠٠ - ٢٥ = ؟', a: ['٣٧٥', '٣٢٥', '٣٠٠'], correct: 0 }]}} ], quiz: [{ q: 'ما هو ناتج طرح ٨٠ - ٢٠؟', a: ['٦٠', '٥٠', '٧٠'], correct: 0 }, { q: 'اطرح: ٣٠٠ - ٥٠', a: ['٢٠٠', '١٥٠', '٢٥٠'], correct: 2 }, { q: 'ناتج طرح ٦٠٣ - ٥٨', a: ['٥٤٥', '٥٥٥', '٥٣٥'], correct: 0 }] }, { id: 'u4', title: 'الفصل الرابع: الضرب (1)', description: 'مقدمة في الضرب وجداول الضرب في ٢، ٤، ٥، ١٠.', lessons: [ { id: 'l4-1', title: 'الشبكات وعملية الضرب', game: { type: 'multipleChoice', instruction: 'ما هي جملة الضرب التي تمثلها الشبكة؟', items: [{ q: 'صفان في كل منهما ٣ مربعات', a: ['٢+٣', '٣-٢', '٢×٣'], correct: 2 }]}}, { id: 'l4-2', title: 'الضرب في 2', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [ { q: '٢ × ٧ = ؟', a: ['١٢', '١٤', '١٦'], correct: 1 } ]}}, { id: 'l4-3', title: 'الضرب في 4', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '٤ × ٤ = ؟', a: ['١٢', '١٦', '٨'], correct: 1 }]}}, { id: 'l4-4', title: 'الضرب في 5', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '٥ × ٦ = ؟', a: ['٣٠', '٢٥', '٣٥'], correct: 0 }]}}, { id: 'l4-5', title: 'الضرب في 10', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '١٠ × ٨ = ؟', a: ['١٨', '٨٠٠', '٨٠'], correct: 2 }]}}, { id: 'l4-6', title: 'الضرب في الصفر والواحد', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '٩٩ × ٠ = ؟', a: ['٩٩', '٠', '١'], correct: 1 }]}} ], quiz: [{ q: 'ما هو ناتج ٤ × ٥؟', a: ['١٠', '٢٠', '٢٥'], correct: 1 }, { q: 'أي جملة ضرب تمثلها الشبكة ٣ صفوف و ٤ أعمدة؟', a: ['٣ + ٤', '٣ × ٤', '٤ - ٣'], correct: 1 }, { q: 'ما هو ناتج ضرب أي عدد في ١٠؟', a: ['نفس العدد', 'نفس العدد مع صفر على يمينه', 'صفر'], correct: 1 }] }, { id: 'u5', title: 'الفصل الخامس: الضرب (2)', description: 'إتقان جداول الضرب في ٣، ٦، ٧، ٨، ٩.', lessons: [ { id: 'l5-1', title: 'الضرب في 3', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [ { q: '٣ × ٨ = ؟', a: ['٢١', '٢٧', '٢٤'], correct: 2 } ]}}, { id: 'l5-2', title: 'الضرب في 6', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '٦ × ٦ = ؟', a: ['٣٠', '٣٦', '٤٢'], correct: 1 }]}}, { id: 'l5-3', title: 'الضرب في 7', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '٧ × ٨ = ؟', a: ['٥٤', '٤٩', '٥٦'], correct: 2 }]}}, { id: 'l5-4', title: 'الضرب في 8', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '٨ × ٩ = ؟', a: ['٧٢', '٦٤', '٨١'], correct: 0 }]}}, { id: 'l5-5', title: 'الضرب في 9', game: { type: 'multipleChoice', instruction: 'اختر الناتج الصحيح لعملية الضرب.', items: [{ q: '٩ × ٥ = ؟', a: ['٤٥', '٥٤', '٣٦'], correct: 0 }]}}, { id: 'l5-6', title: 'الخاصية التجميعية', game: { type: 'multipleChoice', instruction: 'اختر ما يكمل الجملة.', items: [{ q: '(٢ × ٣) × ٤ = ٢ × (؟)', a: ['٢ × ٤', '٣ × ٤', '٢ × ٣'], correct: 1 }]}} ], quiz: [{ q: 'ما هو ناتج ٦ × ٧؟', a: ['٤٢', '٤٨', '٤٩'], correct: 0 }, { q: 'ما هو ناتج ٩ × ١؟', a: ['٠', '١', '٩'], correct: 2 }, { q: 'ناتج ضرب ٨ × ٨ = ؟', a: ['١٦', '٦٤', '٧٢'], correct: 1 }] } ]};
+        
+        // --- GLOBAL VARIABLES ---
+        let currentUser = null; // Will hold user data from Firestore
+        let currentQuiz = null;
+        let currentGame = null;
+        let studentProgressChart = null;
+        let teacherStudentChart = null;
+        let currentStudentForPlan = null;
+        let justCompletedDiagnostic = false;
+        let studentsUnsubscribe = null; // To detach Firestore listener
+
+        // --- FIREBASE SETUP ---
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- GEMINI API INTEGRATION ---
+        async function callGeminiAPI(prompt, maxRetries = 3) {const apiKey = ""; const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`; const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] }; for (let i = 0; i < maxRetries; i++) { try { const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); const result = await response.json(); if (result.candidates && result.candidates[0]?.content?.parts?.[0]?.text) { return result.candidates[0].content.parts[0].text; } else { console.error("Unexpected API response structure:", result); throw new Error("Invalid response structure from Gemini API."); } } catch (error) { console.error(`Attempt ${i + 1} failed:`, error); if (i === maxRetries - 1) return "عذراً، حدث خطأ أثناء محاولة الحصول على المساعدة."; await new Promise(res => setTimeout(res, Math.pow(2, i) * 1000)); } } return "عذراً، لم نتمكن من معالجة طلبك."; }
+        async function getExplanation(questionIndex, buttonElement) { buttonElement.disabled = true; buttonElement.innerHTML = `<svg class="animate-spin h-4 w-4 mx-auto text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`; const questionData = currentQuiz.quiz[questionIndex]; const studentAnswerIndex = currentUser.progress[currentQuiz.id].answers[questionIndex]; const studentAnswerText = studentAnswerIndex !== -1 ? questionData.a[studentAnswerIndex] : "لم تتم الإجابة"; const correctAnswerText = questionData.a[questionData.correct]; const prompt = `أنت معلم رياضيات خبير ومبسط للمعلومات لطلاب الصف الثالث الابتدائي. اشرح ببساطة ووضوح لماذا الإجابة خاطئة ولماذا الإجابة الصحيحة هي الصواب. استخدم لغة سهلة ومثالاً بسيطاً إن أمكن. لا تتجاوز ثلاثة أسطر. السؤال: "${questionData.q}", إجابة الطالب الخاطئة: "${studentAnswerText}", الإجابة الصحيحة: "${correctAnswerText}". ابدأ الشرح مباشرة.`; const explanationText = await callGeminiAPI(prompt); const explanationDiv = document.getElementById(`explanation-${questionIndex}`); explanationDiv.innerHTML = `<p class="text-sm text-blue-800 bg-blue-100 p-3 rounded-md mt-2">${explanationText}</p>`; buttonElement.style.display = 'none'; }
+        async function getSupportPlan() { const buttonElement = document.getElementById('support-plan-btn'); buttonElement.disabled = true; buttonElement.innerHTML = `جاري إنشاء الخطة... <svg class="animate-spin h-5 w-5 inline-block mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`; const strengths = currentStudentForPlan.strengths.join(', ') || 'لا توجد'; const weaknesses = currentStudentForPlan.weaknesses.join(', ') || 'لا توجد'; const prompt = `أنت مساعد معلم متخصص في وضع خطط دعم لطلاب المرحلة الابتدائية. طالب اسمه "${currentStudentForPlan.name}" يظهر النتائج التالية في مادة الرياضيات: نقاط القوة: ${strengths}. نقاط الضعف (تحتاج لتحسين): ${weaknesses}. اقترح خطة دعم بسيطة وموجزة للمعلم لمساعدة هذا الطالب. يجب أن تحتوي الخطة على 2-3 خطوات عملية يمكن للمعلم تطبيقها. استخدم تنسيقاً واضحاً مثل العناوين والنقاط.`; const planText = await callGeminiAPI(prompt); const planContainer = document.getElementById('support-plan-container'); let formattedPlan = planText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); planContainer.innerHTML = `<h5 class="font-bold text-lg mb-2 text-slate-800">خطة الدعم المقترحة لـ ${currentStudentForPlan.name}</h5><div class="text-slate-700 space-y-2">${formattedPlan}</div>`; planContainer.classList.remove('hidden'); buttonElement.innerHTML = '✨ اقتراح خطة دعم'; buttonElement.disabled = false; }
+
+        // --- AUTHENTICATION ---
+        window.showSignupForm = () => { document.getElementById('login-form').classList.add('hidden'); document.getElementById('signup-form').classList.remove('hidden'); document.getElementById('auth-error').textContent = ''; }
+        window.showLoginForm = () => { document.getElementById('signup-form').classList.add('hidden'); document.getElementById('login-form').classList.remove('hidden'); document.getElementById('auth-error').textContent = ''; }
+
+        window.login = async () => {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('auth-error');
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.textContent = 'جاري الدخول...';
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                errorEl.textContent = '';
+            } catch (error) {
+                errorEl.textContent = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+                console.error("Login error:", error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'تسجيل الدخول';
+            }
+        };
+
+        window.signup = async () => {
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const role = document.querySelector('input[name="role"]:checked').value;
+            const errorEl = document.getElementById('auth-error');
+            const btn = document.getElementById('signup-btn');
+            
+            if (!name || !email || !password) { errorEl.textContent = 'الرجاء ملء جميع الحقول.'; return; }
+            btn.disabled = true;
+            btn.textContent = 'جاري الإنشاء...';
+            
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                
+                const userDocRef = doc(db, "users", user.uid);
+                const userData = {
+                    uid: user.uid,
+                    name: name,
+                    email: email,
+                    type: role,
+                };
+                
+                if (role === 'student') {
+                    userData.diagnosticCompleted = false;
+                    userData.progress = initializeProgress();
+                } else {
+                    userData.students = [];
+                }
+
+                await setDoc(userDocRef, userData);
+                errorEl.textContent = '';
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    errorEl.textContent = 'هذا البريد الإلكتروني مسجل بالفعل.';
+                } else {
+                    errorEl.textContent = 'حدث خطأ. الرجاء المحاولة مرة أخرى.';
+                }
+                console.error("Signup error:", error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'إنشاء الحساب';
+            }
+        };
+
+        window.logout = async () => {
+            await signOut(auth);
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (studentsUnsubscribe) { studentsUnsubscribe(); }
+            if (user) {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+                if (userDoc.exists()) {
+                    currentUser = userDoc.data();
+                    document.getElementById('auth-screen').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
+                    document.getElementById('user-name').textContent = currentUser.name;
+                    
+                    if (currentUser.type === 'teacher') {
+                        showTeacherDashboard();
+                    } else {
+                        if (currentUser.diagnosticCompleted) {
+                            showStudentDashboard();
+                        } else {
+                            showDiagnosticScreen();
+                        }
+                    }
+                } else {
+                    console.error("User document not found in Firestore!");
+                    logout();
+                }
+            } else {
+                currentUser = null;
+                document.getElementById('auth-screen').classList.remove('hidden');
+                document.getElementById('main-content').classList.add('hidden');
+            }
+        });
+
+        function initializeProgress() {
+            const progress = {};
+            courseData.units.forEach(unit => {
+                progress[unit.id] = { score: null, completed: false, answers: [], lessons: {} };
+                if(unit.lessons) {
+                    unit.lessons.forEach(lesson => {
+                        progress[unit.id].lessons[lesson.id] = false;
+                    });
+                }
+            });
+            return progress;
+        }
+
+        function showLoading() {
+            document.getElementById('loading-screen').classList.remove('hidden');
+            document.getElementById('diagnostic-screen').classList.add('hidden');
+            document.getElementById('student-dashboard').classList.add('hidden');
+            document.getElementById('teacher-dashboard').classList.add('hidden');
+            document.getElementById('student-detail-view').classList.add('hidden');
+        }
+        
+        function showDiagnosticScreen() {
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('diagnostic-screen').classList.remove('hidden');
+        }
+
+        function showStudentDashboard() {
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('diagnostic-screen').classList.add('hidden');
+            document.getElementById('student-dashboard').classList.remove('hidden');
+            document.getElementById('student-name').textContent = currentUser.name;
+            renderUnits();
+            renderStudentProgressChart();
+        }
+
+        function showTeacherDashboard() {
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('student-dashboard').classList.add('hidden');
+            document.getElementById('student-detail-view').classList.add('hidden');
+            document.getElementById('teacher-dashboard').classList.remove('hidden');
+            renderStudentsList();
+        }
+
+        function renderUnits() { const container = document.getElementById('units-container'); container.innerHTML = `<h3 class="text-2xl font-bold text-slate-800 mb-4">الفصول الدراسية</h3>`; courseData.units.forEach(unit => { const lessonsHtml = (unit.lessons || []).map(lesson => { const isLessonCompleted = currentUser.progress[unit.id]?.lessons[lesson.id]; const buttonDisabled = !lesson.game ? 'disabled' : ''; const buttonClass = isLessonCompleted ? 'bg-green-500 hover:bg-green-600' : 'gradient-bg-button hover:opacity-90'; const buttonText = isLessonCompleted ? 'أُنجزت' : (lesson.game ? 'ابدأ اللعبة' : 'قريباً'); return `<div class="flex justify-between items-center p-3 border-t border-slate-200"><span class="font-semibold text-slate-700">${lesson.title}</span><button onclick="startGame('${unit.id}', '${lesson.id}')" class="px-4 py-2 text-sm text-white rounded-lg shadow-md ${buttonClass}" ${buttonDisabled}>${buttonText}</button></div>`; }).join(''); container.innerHTML += `<div class="unit-card bg-white rounded-2xl shadow-lg transition card-hover overflow-hidden"><div class="p-6 cursor-pointer flex justify-between items-center" onclick="toggleUnit(this.parentElement)"><div><h4 class="text-xl font-bold text-slate-900">${unit.title}</h4><p class="text-slate-600 mt-1">${unit.description}</p></div><svg class="chevron w-6 h-6 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></div><div class="lesson-list bg-slate-50">${lessonsHtml}<div class="p-4 border-t border-slate-200 text-center"><button onclick="startQuiz('${unit.id}')" class="w-full md:w-auto px-6 py-3 font-semibold text-white bg-blue-600 rounded-lg shadow-md hover:bg-blue-700">الاختبار النهائي للفصل</button></div></div></div>`; }); }
+        
+        function toggleUnit(cardElement) { cardElement.classList.toggle('open'); }
+        
+        function renderStudentsList() {
+            const container = document.getElementById('students-list');
+            container.innerHTML = `<div class="loader mx-auto"></div>`;
+            
+            const q = query(collection(db, "users"), where("type", "==", "student"));
+
+            studentsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+                container.innerHTML = '';
+                if (querySnapshot.empty) {
+                     container.innerHTML = `<p class="text-center text-slate-500">لا يوجد طلاب مسجلون في المنصة بعد.</p>`;
+                     return;
+                }
+                querySnapshot.forEach((doc) => {
+                    const student = doc.data();
+                    let totalTasks = 0;
+                    let completedTasks = 0;
+                    courseData.units.forEach(unit => {
+                        totalTasks++;
+                        if (student.progress && student.progress[unit.id]?.completed) {
+                            completedTasks++;
+                        }
+                        unit.lessons.forEach(lesson => {
+                            if (lesson.game) {
+                                totalTasks++;
+                                if (student.progress && student.progress[unit.id]?.lessons[lesson.id]) {
+                                    completedTasks++;
+                                }
+                            }
+                        });
+                    });
+
+                    const overallProgress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+                    container.innerHTML += `<div onclick="viewStudentDetails('${student.uid}')" class="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-100 cursor-pointer transition"><div><p class="font-bold text-lg text-slate-800">${student.name}</p><p class="text-sm text-slate-500">${student.email}</p></div><div class="w-1/2"><p class="text-xs text-slate-600 text-center mb-1">التقدم الإجمالي (ألعاب + اختبارات)</p><div class="w-full bg-slate-200 rounded-full h-2.5"><div class="bg-blue-600 h-2.5 rounded-full" style="width: ${overallProgress.toFixed(0)}%"></div></div><p class="text-xs text-center mt-1">${overallProgress.toFixed(0)}% مكتمل</p></div></div>`;
+                });
+            });
+        }
+
+        window.viewStudentDetails = async (studentUID) => {
+             showLoading();
+             const studentDocRef = doc(db, "users", studentUID);
+             const studentDoc = await getDoc(studentDocRef);
+             if (studentDoc.exists()) {
+                const student = studentDoc.data();
+                document.getElementById('loading-screen').classList.add('hidden');
+                document.getElementById('teacher-dashboard').classList.add('hidden');
+                document.getElementById('student-detail-view').classList.remove('hidden');
+                document.getElementById('detail-student-name').textContent = student.name;
+                document.getElementById('support-plan-container').classList.add('hidden');
+                document.getElementById('support-plan-container').innerHTML = '';
+                renderTeacherStudentChart(student);
+                renderStrengthsAndWeaknesses(student);
+             }
+        }
+
+        window.startGame = (unitId, lessonId) => { const unit = courseData.units.find(u => u.id === unitId); const lesson = unit.lessons.find(l => l.id === lessonId); if (!lesson || !lesson.game) return; currentGame = { unitId, lessonId, ...lesson.game }; document.getElementById('game-title').textContent = lesson.title; document.getElementById('game-instruction').textContent = currentGame.instruction; const gameArea = document.getElementById('game-area'); gameArea.innerHTML = ''; document.getElementById('game-feedback').textContent = ''; if (currentGame.type === 'matching' || currentGame.type === 'multipleChoice') { currentGame.items.forEach((item, index) => { const optionsHtml = item.a.map((option, i) => `<button onclick="checkMatchAnswer(${index}, ${i})" class="w-full text-right p-3 border-2 border-slate-200 rounded-lg hover:bg-blue-100 hover:border-blue-400 transition">${option}</button>`).join(''); gameArea.innerHTML += `<div id="game-item-${index}" class="p-4 bg-slate-100 rounded-lg"><p class="font-bold text-lg mb-3 text-slate-800">${item.q}</p><div class="space-y-2">${optionsHtml}</div></div>`; }); } openModal('game-modal'); }
+        
+        window.checkMatchAnswer = async (itemIndex, answerIndex) => {
+            const item = currentGame.items[itemIndex];
+            const feedbackEl = document.getElementById('game-feedback');
+            const itemContainer = document.getElementById(`game-item-${itemIndex}`);
+            if (answerIndex === item.correct) {
+                feedbackEl.textContent = 'إجابة رائعة!';
+                feedbackEl.className = 'text-center font-bold mt-4 h-6 text-green-500';
+                itemContainer.style.display = 'none';
+                const allDone = Array.from(document.getElementById('game-area').children).every(child => child.style.display === 'none');
+                if (allDone) {
+                    feedbackEl.textContent = 'أحسنت! لقد أكملت اللعبة بنجاح.';
+                    const progressPath = `progress.${currentGame.unitId}.lessons.${currentGame.lessonId}`;
+                    const userDocRef = doc(db, "users", currentUser.uid);
+                    await updateDoc(userDocRef, { [progressPath]: true });
+                    currentUser.progress[currentGame.unitId].lessons[currentGame.lessonId] = true;
+                    renderUnits();
+                }
+            } else {
+                feedbackEl.textContent = 'حاول مرة أخرى!';
+                feedbackEl.className = 'text-center font-bold mt-4 h-6 text-red-500';
+            }
+        }
+        
+        window.startQuiz = (id) => { if (id === 'diagnostic') { currentQuiz = courseData.diagnosticTest; } else { currentQuiz = courseData.units.find(u => u.id === id); } const questionsContainer = document.getElementById('quiz-questions'); document.getElementById('quiz-title').textContent = currentQuiz.title; questionsContainer.innerHTML = ''; currentQuiz.quiz.forEach((q, index) => { const optionsHtml = q.a.map((option, i) => `<div><input type="radio" name="q${index}" id="q${index}o${i}" value="${i}" class="hidden peer"><label for="q${index}o${i}" class="block p-4 border-2 border-slate-200 rounded-lg cursor-pointer peer-checked:bg-blue-100 peer-checked:border-blue-500 hover:bg-slate-100">${option}</label></div>`).join(''); questionsContainer.innerHTML += `<div class="question"><p class="font-semibold mb-3 text-slate-800">${index + 1}. ${q.q}</p><div class="grid grid-cols-1 md:grid-cols-2 gap-3">${optionsHtml}</div></div>`; }); openModal('quiz-modal'); }
+        
+        window.submitQuiz = async () => {
+            let score = 0;
+            const userAnswers = [];
+            currentQuiz.quiz.forEach((q, index) => {
+                const selectedOption = document.querySelector(`input[name="q${index}"]:checked`);
+                const answer = selectedOption ? parseInt(selectedOption.value) : -1;
+                userAnswers.push(answer);
+                if (answer === q.correct) score++;
+            });
+            const finalScore = Math.round((score / currentQuiz.quiz.length) * 100);
+            const userDocRef = doc(db, "users", currentUser.uid);
+
+            if (currentQuiz.id === 'diagnostic') {
+                await updateDoc(userDocRef, { 
+                    diagnosticCompleted: true,
+                    diagnosticScore: finalScore 
+                });
+                currentUser.diagnosticCompleted = true;
+                justCompletedDiagnostic = true;
+            } else {
+                const progressPathScore = `progress.${currentQuiz.id}.score`;
+                const progressPathCompleted = `progress.${currentQuiz.id}.completed`;
+                const progressPathAnswers = `progress.${currentQuiz.id}.answers`;
+                await updateDoc(userDocRef, {
+                    [progressPathScore]: finalScore,
+                    [progressPathCompleted]: true,
+                    [progressPathAnswers]: userAnswers
+                });
+                currentUser.progress[currentQuiz.id].score = finalScore;
+                currentUser.progress[currentQuiz.id].completed = true;
+                currentUser.progress[currentQuiz.id].answers = userAnswers;
+            }
+            
+            showFeedback(finalScore, userAnswers);
+            closeModal('quiz-modal');
+
+            if (currentQuiz.id !== 'diagnostic') {
+                renderUnits();
+                renderStudentProgressChart();
+            }
+        }
+
+        window.showFeedback = (score, userAnswers) => { document.getElementById('feedback-score').textContent = `درجتك هي: ${score}%`; const detailsContainer = document.getElementById('feedback-details'); detailsContainer.innerHTML = ''; currentQuiz.quiz.forEach((q, index) => { const userAnswerIndex = userAnswers[index]; const isCorrect = userAnswerIndex === q.correct; const userAnswerText = userAnswerIndex !== -1 ? q.a[userAnswerIndex] : 'لم تتم الإجابة'; const correctAnswerText = q.a[q.correct]; const resultClass = isCorrect ? 'border-green-400 bg-green-50' : 'border-red-400 bg-red-50'; const icon = isCorrect ? `<span class="text-green-500 font-bold">&#10003;</span>` : `<span class="text-red-500 font-bold">&#10007;</span>`; let explanationButton = ''; if (!isCorrect) { explanationButton = `<button onclick="getExplanation(${index}, this)" class="mt-2 px-3 py-1 text-xs font-semibold text-white bg-blue-500 rounded-full hover:bg-blue-600 transition flex items-center gap-1">✨ اشرح لي أكثر</button>`; } detailsContainer.innerHTML += `<div class="p-4 border-2 rounded-lg ${resultClass}"><p class="font-semibold mb-2 text-slate-800">${index + 1}. ${q.q}</p><p class="text-sm">إجابتك: ${userAnswerText} ${icon}</p>${!isCorrect ? `<p class="text-sm text-green-700 font-semibold">الإجابة الصحيحة: ${correctAnswerText}</p>` : ''}${explanationButton}<div id="explanation-${index}"></div></div>`; }); openModal('feedback-modal'); }
+        
+        function renderStrengthsAndWeaknesses(student) { const strengthsEl = document.getElementById('student-strengths'); const weaknessesEl = document.getElementById('student-weaknesses'); strengthsEl.innerHTML = ''; weaknessesEl.innerHTML = ''; let strengths = [], weaknesses = []; courseData.units.forEach(unit => { const progress = student.progress[unit.id]; if (progress && progress.completed) { if (progress.score >= 80) strengths.push(unit.title); else if (progress.score < 60) weaknesses.push(unit.title); } }); currentStudentForPlan = { name: student.name, strengths, weaknesses }; strengthsEl.innerHTML = strengths.length > 0 ? strengths.map(s => `<li>${s}</li>`).join('') : `<li>لا توجد بيانات كافية بعد.</li>`; weaknessesEl.innerHTML = weaknesses.length > 0 ? weaknesses.map(w => `<li>${w}</li>`).join('') : `<li>لا توجد نقاط ضعف واضحة حالياً.</li>`; }
+        
+        window.openModal = (id) => { document.getElementById(id).classList.remove('hidden'); }
+        window.closeModal = (id) => {
+            document.getElementById(id).classList.add('hidden');
+            if (id === 'feedback-modal' && justCompletedDiagnostic) {
+                justCompletedDiagnostic = false;
+                showStudentDashboard();
+            }
+        }
+        function renderStudentProgressChart() { const ctx = document.getElementById('studentProgressChart').getContext('2d'); const labels = courseData.units.map(u => u.title); const data = courseData.units.map(u => currentUser.progress[u.id]?.score || 0); if (studentProgressChart) studentProgressChart.destroy(); studentProgressChart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'الدرجة (%)', data: data, backgroundColor: 'rgba(59, 130, 246, 0.6)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1, borderRadius: 5, }] }, options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } } }); }
+        function renderTeacherStudentChart(student) { const ctx = document.getElementById('teacherStudentChart').getContext('2d'); const labels = courseData.units.map(u => u.title); const data = courseData.units.map(u => student.progress[u.id]?.score || 0); if (teacherStudentChart) teacherStudentChart.destroy(); teacherStudentChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'أداء الطالب (%)', data: data, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: 'rgba(59, 130, 246, 1)', tension: 0.3 }] }, options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } } }); }
+    </script>
+</body>
+</html>
